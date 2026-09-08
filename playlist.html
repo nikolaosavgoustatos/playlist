@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nick's Playlists</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root { --red: #ff2d2d; --bg: #0a0a0a; --surface: #141414; --surface2: #1c1c1c; --border: #2a2a2a; --text: #f0f0f0; --muted: #666; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+
+        header { display: flex; align-items: center; gap: 14px; padding: 22px 36px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; background: rgba(10,10,10,0.92); backdrop-filter: blur(12px); }
+        header h1 { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 2px; }
+        .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin-left: 4px; }
+        .breadcrumb .crumb { color: var(--text); cursor: pointer; transition: color 0.2s; }
+        .breadcrumb .crumb:hover { color: var(--red); }
+        .breadcrumb .sep { color: #333; }
+
+        #main { padding: 32px 36px; }
+
+        /* Folder System */
+        #folder-bar { display: none; align-items: center; gap: 10px; margin-bottom: 16px; padding: 10px 0; position: sticky; top: 78px; z-index: 9; background: var(--bg); }
+        .folder-select { background: var(--surface2); color: white; border: 1px solid var(--border); border-radius: 20px; padding: 8px 16px; font-size: 13px; cursor: pointer; max-width: 240px; }
+        .folder-select:focus { outline: none; border-color: var(--red); }
+        .add-folder-btn { background: var(--red); color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+
+        /* Selection Action Bar */
+        #selection-bar { display: none; align-items: center; gap: 10px; flex-wrap: wrap; position: sticky; top: 136px; z-index: 8; background: #1c1010; border: 1px solid var(--red); border-radius: 10px; padding: 10px 16px; margin-bottom: 18px; }
+        #selCount { font-size: 13px; color: var(--muted); white-space: nowrap; }
+        #selLabel { color: var(--muted); font-size: 13px; white-space: nowrap; }
+        #clearSelBtn { margin-left: auto; background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 16px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+
+        .channel-header { display: flex; align-items: center; gap: 20px; margin-bottom: 32px; animation: fadeUp 0.35s ease both; }
+        .channel-avatar { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); flex-shrink: 0; background: var(--surface2); }
+        .channel-info h2 { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 1.5px; }
+        .channel-info p { color: var(--muted); font-size: 13px; margin-top: 3px; }
+
+        .section-label { font-size: 11px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; }
+
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; animation: fadeUp 0.4s ease both; position: relative; }
+        .chk-box { position: absolute; top: 10px; left: 10px; z-index: 5; width: 20px; height: 20px; cursor: pointer; }
+        .thumb-wrap { position: relative; aspect-ratio: 16/9; background: #111; overflow: hidden; cursor: pointer; }
+        .thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s; }
+        .thumb-wrap:hover img { transform: scale(1.04); }
+        .play-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.38); pointer-events: none;}
+        .play-icon { width: 46px; height: 46px; background: var(--red); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+        .card-body { padding: 12px 14px 14px; }
+        .card-title { font-size: 13px; font-weight: 500; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .ytmusic-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-size: 12px; padding: 6px 10px; border-radius: 14px; cursor: pointer; text-decoration: none; }
+        .ytmusic-btn:hover { border-color: var(--red); color: var(--red); }
+
+        .error-box { color: #ff6b6b; padding: 20px; font-size: 14px; }
+
+        /* Floating Overlay Player */
+        #sticky-player { 
+            position: fixed; 
+            top: 10px; 
+            right: 36px; 
+            left: auto; 
+            z-index: 1000; 
+            display: none; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
+            background: transparent;
+        }
+        #sticky-player iframe { width: 320px; height: 180px; border: none; display: block; }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <header>
+        <svg width="30" height="21" viewBox="0 0 90 63" fill="none"><path d="M88.1 9.83C87.1 6.3 84.3 3.5 80.8 2.5 73.7 0.5 45.4 0.5 45.4 0.5s-28.3 0-35.4 2C6.5 3 3.7 5.8 2.7 9.3 0.7 16.4 0.7 31.3 0.7 31.3s0 14.9 2 22c1 3.5 3.8 6.3 7.3 7.3 7.1 2 35.4 2 35.4 2s28.3 0 35.4-2c3.5-1 6.3-3.8 7.3-7.3 2-7.1 2-22 2-22s0-14.9-2-21.47z" fill="#FF0000"/><path d="M36.3 44.8L59.6 31.3 36.3 17.8v27z" fill="white"/></svg>
+        <h1>Channel Playlists</h1>
+        <div class="breadcrumb" id="breadcrumb"></div>
+    </header>
+
+    <div id="main">
+        <div class="channel-header" id="channelHeader" style="display:none">
+            <img class="channel-avatar" id="channelAvatar" src="" alt="">
+            <div class="channel-info">
+                <h2 id="channelName"></h2>
+                <p id="channelSub"></p>
+            </div>
+        </div>
+
+        <div id="folder-bar">
+            <select class="folder-select" id="folderSelect" onchange="switchFolder(this.value)">
+                <option value="main">All Videos</option>
+            </select>
+            <button class="add-folder-btn" onclick="createFolder()">+ Folder</button>
+        </div>
+
+        <div id="selection-bar">
+            <span id="selCount"></span>
+            <span id="selLabel">Move to:</span>
+            <select class="folder-select" id="selFolderTargets" onchange="moveSelectedTo(this.value)">
+                <option value="" disabled selected>Choose folder…</option>
+            </select>
+            <button id="clearSelBtn" onclick="clearSelection()">Clear</button>
+        </div>
+
+        <div class="section-label" id="sectionLabel"></div>
+        <div class="grid" id="grid"></div>
+    </div>
+
+    <!-- The Floating Video Overlay -->
+    <div id="sticky-player">
+        <div id="sticky-player-inner"></div>
+    </div>
+
+<script>
+const CHANNEL_HANDLE = '@nickshivand5410';
+const API_KEY = 'AIzaSyAyMlhpLNitlwSY13eIcrDlfpChePeIDrk';
+let channelData = null, currentView = 'playlists', currentPlaylist = null;
+let currentFolder = 'main', currentVideoList = [], selectedVids = [];
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmt(n) { if (!n) return ''; n = parseInt(n); if (n >= 1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'') + 'M'; if (n >= 1e3) return (n/1e3).toFixed(1).replace(/\.0$/,'') + 'K'; return n.toLocaleString(); }
+async function ytFetch(url) { const res = await fetch(url); const data = await res.json(); if (data.error) throw new Error(data.error.message); return data; }
+
+// --- Folder Logic (persisted in localStorage, keyed per playlist) ---
+function getStore() { return JSON.parse(localStorage.getItem('yt_folders') || '{}'); }
+function saveStore(data) { localStorage.setItem('yt_folders', JSON.stringify(data)); }
+
+function createFolder() {
+    const name = prompt("Enter folder name:");
+    if (!name) return;
+    const s = getStore();
+    if (!s[currentPlaylist.id]) s[currentPlaylist.id] = { folders: {} };
+    if (!s[currentPlaylist.id].folders[name]) s[currentPlaylist.id].folders[name] = [];
+    saveStore(s);
+    renderFolders();
+}
+
+function switchFolder(name) {
+    currentFolder = name;
+    selectedVids = [];
+    const sel = document.getElementById('folderSelect');
+    if (sel) sel.value = name;
+    renderVideos(currentVideoList);
+    updateSelectionBar();
+}
+
+function renderFolders() {
+    const bar = document.getElementById('folder-bar');
+    bar.style.display = 'flex';
+    const sel = document.getElementById('folderSelect');
+    const store = getStore()[currentPlaylist?.id]?.folders || {};
+
+    sel.innerHTML = '<option value="main">All Videos</option>';
+    Object.keys(store).sort((a, b) => a.localeCompare(b)).forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+    });
+    sel.value = currentFolder;
+}
+
+// --- Selection + Move (click-based, no dragging needed) ---
+function toggleSelect(id) {
+    if (selectedVids.includes(id)) selectedVids = selectedVids.filter(i => i !== id);
+    else selectedVids.push(id);
+    updateSelectionBar();
+}
+
+function clearSelection() {
+    selectedVids = [];
+    renderVideos(currentVideoList);
+    updateSelectionBar();
+}
+
+function updateSelectionBar() {
+    const bar = document.getElementById('selection-bar');
+    if (!selectedVids.length) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    document.getElementById('selCount').textContent = `${selectedVids.length} selected`;
+
+    const targets = document.getElementById('selFolderTargets');
+    const store = getStore()[currentPlaylist?.id]?.folders || {};
+
+    targets.innerHTML = '<option value="" disabled selected>Choose folder…</option><option value="main">All Videos</option>';
+    Object.keys(store).sort((a, b) => a.localeCompare(b)).forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        targets.appendChild(opt);
+    });
+}
+
+function moveSelectedTo(folderName) {
+    const s = getStore();
+    if (!s[currentPlaylist.id]) s[currentPlaylist.id] = { folders: {} };
+    const folders = s[currentPlaylist.id].folders;
+
+    // remove selected ids from every folder first (so a video only lives in one place)
+    Object.keys(folders).forEach(f => {
+        folders[f] = folders[f].filter(id => !selectedVids.includes(id));
+    });
+
+    if (folderName !== 'main') {
+        if (!folders[folderName]) folders[folderName] = [];
+        folders[folderName].push(...selectedVids);
+    }
+
+    saveStore(s);
+    selectedVids = [];
+    switchFolder(folderName);
+    const sel = document.getElementById('selFolderTargets');
+    if (sel) sel.selectedIndex = 0;
+}
+
+// --- Player Logic ---
+function playVideo(vidId) {
+    const player = document.getElementById('sticky-player');
+    const inner = document.getElementById('sticky-player-inner');
+    player.style.display = 'block';
+    inner.innerHTML = `<iframe src="https://www.youtube.com/embed/${vidId}?autoplay=1&rel=0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+}
+
+function renderVideos(items) {
+    const grid = document.getElementById('grid'); grid.innerHTML = '';
+    const store = getStore()[currentPlaylist.id];
+
+    let filtered = items.filter(v => {
+        // Skip deleted/private videos entirely (no usable thumbnail/videoId) so they don't break the loop
+        if (!v.snippet || !v.snippet.resourceId || !v.snippet.resourceId.videoId) return false;
+        if (v.snippet.title === 'Deleted video' || v.snippet.title === 'Private video') return false;
+
+        const vidId = v.snippet.resourceId.videoId;
+        const assigned = Object.values(store?.folders || {}).flat();
+        if (currentFolder === 'main') return !assigned.includes(vidId);
+        return store?.folders[currentFolder]?.includes(vidId);
+    });
+
+    filtered.forEach(v => {
+        const vidId = v.snippet.resourceId.videoId;
+        const thumb = v.snippet.thumbnails?.high?.url || v.snippet.thumbnails?.medium?.url || v.snippet.thumbnails?.default?.url || '';
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <input type="checkbox" class="chk-box" ${selectedVids.includes(vidId)?'checked':''} onclick="toggleSelect('${vidId}')">
+            <div class="thumb-wrap" onclick="playVideo('${vidId}')">
+                <img src="${esc(thumb)}" loading="lazy">
+                <div class="play-overlay"><div class="play-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></div></div>
+            </div>
+            <div class="card-body">
+                <div class="card-title">${esc(v.snippet.title)}</div>
+                <a class="ytmusic-btn" href="https://music.youtube.com/watch?v=${vidId}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 16.5c-3.59 0-6.5-2.91-6.5-6.5S8.41 5.5 12 5.5s6.5 2.91 6.5 6.5-2.91 6.5-6.5 6.5zM10 8.5v7l6-3.5-6-3.5z"/></svg>
+                    Listen on YT Music
+                </a>
+            </div>`;
+        grid.appendChild(card);
+    });
+
+    if (filtered.length === 0) {
+        grid.innerHTML = `<div class="error-box">No videos in this view.</div>`;
+    }
+}
+
+// --- App Navigation Logic ---
+function updateBreadcrumb() {
+    const bc = document.getElementById('breadcrumb');
+    if (currentView === 'playlists') {
+        bc.innerHTML = '';
+        document.getElementById('folder-bar').style.display = 'none';
+        document.getElementById('selection-bar').style.display = 'none';
+    } else {
+        bc.innerHTML = `<span class="sep">›</span><span class="crumb" onclick="showPlaylists()">Playlists</span><span class="sep">›</span><span>${esc(currentPlaylist.title)}</span>`;
+        document.getElementById('folder-bar').style.display = 'flex';
+        renderFolders();
+    }
+}
+
+async function init() {
+    try {
+        const data = await ytFetch(`https://www.googleapis.com/youtube/v3/channels?part=id,snippet,statistics&forHandle=${encodeURIComponent(CHANNEL_HANDLE)}&key=${API_KEY}`);
+        const ch = data.items[0];
+        const t = ch.snippet.thumbnails;
+        channelData = { id: ch.id, name: ch.snippet.title, avatar: (t.high || t.medium || t.default || {}).url || '', subs: ch.statistics.hiddenSubscriberCount ? '' : fmt(ch.statistics.subscriberCount) + ' subscribers · ', videos: fmt(ch.statistics.videoCount) + ' videos' };
+        document.getElementById('channelAvatar').src = channelData.avatar;
+        document.getElementById('channelName').textContent = channelData.name;
+        document.getElementById('channelSub').textContent = channelData.subs + channelData.videos;
+        document.getElementById('channelHeader').style.display = 'flex';
+        await showPlaylists();
+    } catch (err) { document.getElementById('grid').innerHTML = `<div class="error-box">Error: ${err.message}</div>`; }
+}
+
+async function showPlaylists() {
+    currentView = 'playlists'; currentPlaylist = null; updateBreadcrumb();
+    const d = await ytFetch(`https://www.googleapis.com/youtube/v3/playlists?part=snippet,contentDetails&channelId=${channelData.id}&maxResults=50&key=${API_KEY}`);
+    document.getElementById('sectionLabel').textContent = `${d.items.length} Playlists`;
+    const grid = document.getElementById('grid'); grid.innerHTML = '';
+    d.items.forEach(pl => {
+        const card = document.createElement('div'); card.className = 'card';
+        card.innerHTML = `<div class="thumb-wrap"><img src="${esc(pl.snippet.thumbnails.high.url)}" loading="lazy"><div class="play-overlay"><div class="play-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="white"><path d="M3 2l11 6-11 6V2z"/></svg></div></div></div><div class="card-body"><div class="card-title">${esc(pl.snippet.title)}</div></div>`;
+        card.onclick = () => showVideos(pl.id, pl.snippet.title);
+        grid.appendChild(card);
+    });
+}
+
+async function showVideos(playlistId, playlistTitle) {
+    currentView = 'videos'; currentPlaylist = { id: playlistId, title: playlistTitle }; currentFolder = 'main'; selectedVids = []; updateBreadcrumb();
+    document.getElementById('sectionLabel').textContent = playlistTitle + ' (loading...)';
+    document.getElementById('grid').innerHTML = '';
+    updateSelectionBar();
+
+    let allItems = [];
+    let pageToken = '';
+    do {
+        const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${playlistId}&maxResults=50&key=${API_KEY}` + (pageToken ? `&pageToken=${pageToken}` : '');
+        const d = await ytFetch(url);
+        allItems = allItems.concat(d.items);
+        pageToken = d.nextPageToken || '';
+    } while (pageToken);
+
+    document.getElementById('sectionLabel').textContent = `${playlistTitle} (${allItems.length} videos)`;
+    currentVideoList = allItems;
+    renderVideos(currentVideoList);
+}
+
+init();
+</script>
+</body>
+</html>

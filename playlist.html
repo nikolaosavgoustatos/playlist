@@ -202,8 +202,15 @@ async function init() {
 
 async function showPlaylists() {
     currentView = 'playlists'; currentPlaylist = null; updateBreadcrumb();
-    const d = await ytFetch(`https://www.googleapis.com/youtube/v3/playlists?part=snippet,contentDetails&channelId=${channelData.id}&maxResults=50`);
-    const items = d.items.slice().sort((a, b) => a.snippet.title.localeCompare(b.snippet.title, undefined, { sensitivity: 'base' }));
+    let allPlaylists = [];
+    let plPageToken = '';
+    do {
+        const url = `https://www.googleapis.com/youtube/v3/playlists?part=snippet,contentDetails&channelId=${channelData.id}&maxResults=50` + (plPageToken ? `&pageToken=${plPageToken}` : '');
+        const d = await ytFetch(url);
+        allPlaylists = allPlaylists.concat(d.items);
+        plPageToken = d.nextPageToken || '';
+    } while (plPageToken);
+    const items = allPlaylists.sort((a, b) => a.snippet.title.localeCompare(b.snippet.title, undefined, { sensitivity: 'base' }));
     document.getElementById('sectionLabel').textContent = `${items.length} Playlists`;
     const grid = document.getElementById('grid'); grid.innerHTML = '';
     items.forEach(pl => {
